@@ -8,7 +8,9 @@ import (
 
 	"github.com/go-telegram/bot"
 	"github.com/joho/godotenv"
+	"github.com/malyyboh/slowo-wiary-warszawa-bot/internal/database"
 	"github.com/malyyboh/slowo-wiary-warszawa-bot/internal/handlers"
+	"github.com/malyyboh/slowo-wiary-warszawa-bot/internal/middleware"
 )
 
 func main() {
@@ -18,6 +20,18 @@ func main() {
 	}
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer cancel()
+
+	middleware.InitAdmins()
+
+	dbPath := os.Getenv("DATABASE_PATH")
+	if dbPath == "" {
+		dbPath = "./data/bot.db"
+	}
+
+	if err := database.InitDB(dbPath); err != nil {
+		log.Fatalf("Failed to initialize database: %v", err)
+	}
+	defer database.CloseDB()
 
 	token := os.Getenv("TELEGRAM_BOT_TOKEN")
 	if token == "" {

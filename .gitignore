@@ -6,9 +6,13 @@
 *.dylib
 bin/
 dist/
+bot
 
 # Environment variables
 .env
+
+# Database
+data/
 
 # Go
 *.test
@@ -20,3 +24,7 @@ go.work
 .idea/
 *.swp
 *.swo
+
+# OS
+.DS_Store
+Thumbs.db
