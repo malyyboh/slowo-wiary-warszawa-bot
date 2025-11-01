@@ -2,12 +2,17 @@ package handlers
 
 import (
 	"context"
+	"fmt"
+	"log"
 
 	"github.com/go-telegram/bot"
 	"github.com/go-telegram/bot/models"
 	"github.com/malyyboh/slowo-wiary-warszawa-bot/internal/keyboards"
 	"github.com/malyyboh/slowo-wiary-warszawa-bot/internal/messages"
+	"github.com/malyyboh/slowo-wiary-warszawa-bot/internal/repository"
 )
+
+var eventRepo = repository.NewEventRepository()
 
 func StartHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 	text := messages.GetText("/start")
@@ -102,12 +107,12 @@ func CallbackHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 		text = messages.GetText("contact")
 		keyboard = keyboards.BackToMainMenuKeyboard()
 	case "events":
-		text = messages.GetText("no_events")
+		text = getEventsListText()
 		keyboard = keyboards.BackToMainMenuKeyboard()
 
 	default:
 		text = messages.GetText("other_answer")
-		keyboard = keyboards.MainMenuKeyboard()
+		keyboard = keyboards.BackToMainMenuKeyboard()
 	}
 
 	b.EditMessageText(ctx, &bot.EditMessageTextParams{
@@ -141,4 +146,46 @@ func DefaultHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 			},
 		})
 	}
+}
+
+func getEventsListText() string {
+	events, err := eventRepo.GetUpcoming()
+	if err != nil {
+		log.Printf("Error getting upcoming events: %v", err)
+		return messages.GetText("no_events")
+	}
+
+	if len(events) == 0 {
+		return messages.GetText("no_events")
+	}
+
+	text := "📅 <b>Найближчі події</b>\n\n"
+
+	for i, event := range events {
+		text += fmt.Sprintf(
+			"<b>%d. %s</b>\n"+
+				"📅 %s\n"+
+				"📝 %s\n",
+			i+1,
+			event.Title,
+			event.Date.Format("02.01.2006 15:04"),
+			event.Description,
+		)
+
+		if event.Location != nil && *event.Location != "" {
+			text += fmt.Sprintf("📍 %s\n", *event.Location)
+		}
+
+		if event.Category != nil && *event.Category != "" {
+			text += fmt.Sprintf("🏷 %s\n", *event.Category)
+		}
+
+		if event.RegistrationURL != nil && *event.RegistrationURL != "" {
+			text += fmt.Sprintf("🔗 <a href=\"%s\">Реєстрація</a>\n", *event.RegistrationURL)
+		}
+
+		text += "\n"
+	}
+
+	return text
 }

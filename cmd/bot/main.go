@@ -40,7 +40,6 @@ func main() {
 
 	opts := []bot.Option{
 		bot.WithDefaultHandler(handlers.DefaultHandler),
-		bot.WithCallbackQueryDataHandler("", bot.MatchTypePrefix, handlers.CallbackHandler),
 	}
 
 	b, err := bot.New(token, opts...)
@@ -48,9 +47,15 @@ func main() {
 		log.Fatal(err)
 	}
 
+	b.RegisterHandler(bot.HandlerTypeCallbackQueryData, "admin_", bot.MatchTypePrefix,
+		middleware.AdminOnly(handlers.AdminCallbackHandler))
+	b.RegisterHandler(bot.HandlerTypeCallbackQueryData, "", bot.MatchTypePrefix, handlers.CallbackHandler)
+
 	b.RegisterHandler(bot.HandlerTypeMessageText, "/start", bot.MatchTypeExact, handlers.StartHandler)
 	b.RegisterHandler(bot.HandlerTypeMessageText, "/help", bot.MatchTypeExact, handlers.HelpHandler)
 
+	b.RegisterHandler(bot.HandlerTypeMessageText, "/admin", bot.MatchTypeExact,
+		middleware.AdminOnly(handlers.AdminPanelHandler))
 	log.Println("Bot started...")
 	b.Start(ctx)
 }
