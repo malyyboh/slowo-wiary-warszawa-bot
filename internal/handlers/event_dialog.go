@@ -10,6 +10,7 @@ import (
 	"github.com/go-telegram/bot"
 	"github.com/go-telegram/bot/models"
 	"github.com/malyyboh/slowo-wiary-warszawa-bot/internal/conversation"
+	"github.com/malyyboh/slowo-wiary-warszawa-bot/internal/keyboards"
 	internalModels "github.com/malyyboh/slowo-wiary-warszawa-bot/internal/models"
 )
 
@@ -214,10 +215,13 @@ func handleRegistrationURL(ctx context.Context, b *bot.Bot, userID int64, chatID
 
 	conv.ClearState(userID)
 
+	keyboard := keyboards.AdminPanelKeyboard()
+
 	b.SendMessage(ctx, &bot.SendMessageParams{
-		ChatID:    chatID,
-		Text:      summary,
-		ParseMode: models.ParseModeHTML,
+		ChatID:      chatID,
+		Text:        summary,
+		ParseMode:   models.ParseModeHTML,
+		ReplyMarkup: keyboard,
 	})
 }
 
