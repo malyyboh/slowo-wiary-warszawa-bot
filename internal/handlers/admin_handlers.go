@@ -42,10 +42,14 @@ func AdminCallbackHandler(ctx context.Context, b *bot.Bot, update *models.Update
 		keyboard = keyboards.AdminEventsListKeyboard()
 
 	case "admin_add_event":
-		text = "➕ <b>Додавання нової події</b>\n\n" +
-			"Ця функція буде реалізована в наступному кроці.\n" +
-			"Для додавання події буде використано діалог з ботом."
-		keyboard = keyboards.BackToAdminPanelKeyboard()
+		userID := callback.From.ID
+		chatID := callback.Message.Message.Chat.ID
+		StartAddEventDialog(ctx, b, userID, chatID)
+
+		b.AnswerCallbackQuery(ctx, &bot.AnswerCallbackQueryParams{
+			CallbackQueryID: callback.ID,
+		})
+		return
 
 	default:
 		text = "Невідома команда"

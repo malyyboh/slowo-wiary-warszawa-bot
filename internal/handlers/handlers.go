@@ -4,9 +4,11 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"time"
 
 	"github.com/go-telegram/bot"
 	"github.com/go-telegram/bot/models"
+	"github.com/malyyboh/slowo-wiary-warszawa-bot/internal/conversation"
 	"github.com/malyyboh/slowo-wiary-warszawa-bot/internal/keyboards"
 	"github.com/malyyboh/slowo-wiary-warszawa-bot/internal/messages"
 	"github.com/malyyboh/slowo-wiary-warszawa-bot/internal/repository"
@@ -133,6 +135,16 @@ func CallbackHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 
 func DefaultHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 	if update.Message != nil {
+		userID := update.Message.From.ID
+
+		conv := conversation.GetManager()
+		state := conv.GetState(userID)
+
+		if state != "" {
+			HandleEventDialogMessage(ctx, b, update)
+			return
+		}
+
 		text := messages.GetText("other_answer")
 		keyboard := keyboards.MainMenuKeyboard()
 
@@ -168,7 +180,7 @@ func getEventsListText() string {
 				"📝 %s\n",
 			i+1,
 			event.Title,
-			event.Date.Format("02.01.2006 15:04"),
+			formatEventDate(event.Date),
 			event.Description,
 		)
 
@@ -188,4 +200,11 @@ func getEventsListText() string {
 	}
 
 	return text
+}
+
+func formatEventDate(t time.Time) string {
+	if t.Hour() == 0 && t.Minute() == 0 {
+		return t.Format("02.01.2006")
+	}
+	return t.Format("02.01.2006 15:04")
 }
