@@ -4,10 +4,14 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"strconv"
+	"strings"
 
 	"github.com/go-telegram/bot"
 	"github.com/go-telegram/bot/models"
+	"github.com/malyyboh/slowo-wiary-warszawa-bot/internal/conversation"
 	"github.com/malyyboh/slowo-wiary-warszawa-bot/internal/keyboards"
+	internalModels "github.com/malyyboh/slowo-wiary-warszawa-bot/internal/models"
 )
 
 func AdminPanelHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
@@ -28,6 +32,8 @@ func AdminPanelHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 func AdminCallbackHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 	callback := update.CallbackQuery
 	data := callback.Data
+
+	log.Printf("AdminCallbackHandler: received callback '%s' from user %d", data, callback.From.ID)
 
 	var text string
 	var keyboard *models.InlineKeyboardMarkup
@@ -51,7 +57,27 @@ func AdminCallbackHandler(ctx context.Context, b *bot.Bot, update *models.Update
 		})
 		return
 
+	case "admin_delete_event":
+		userID := callback.From.ID
+		conv := conversation.GetManager()
+		conv.SetState(userID, internalModels.StateAwaitingDeleteID)
+		text = "🗑️ <b>Видалення події</b>\n\n" +
+			"Введіть <b>ID події</b> для видалення:\n\n" +
+			"Ви можете побачити ID в списку подій."
+		keyboard = keyboards.BackToAdminPanelKeyboard()
+
+	case "admin_confirm_delete":
+		log.Println("Case: confirm_delete - calling handleDeleteConfirm")
+		handleDeleteConfirm(ctx, b, callback)
+		return
+
+	case "admin_cancel_delete":
+		log.Println("Case: cancel_delete - calling handleDeleteCancel")
+		handleDeleteCancel(ctx, b, callback)
+		return
+
 	default:
+		log.Printf("Case: default - unknown command '%s'", data)
 		text = "Невідома команда"
 		keyboard = keyboards.AdminPanelKeyboard()
 	}
@@ -103,7 +129,7 @@ func getAdminEventsListText() string {
 			status,
 			i+1,
 			event.Title,
-			event.Date.Format("02.01.2006 15:04"),
+			formatEventDate(event.Date),
 			event.ID,
 		)
 	}
@@ -111,4 +137,125 @@ func getAdminEventsListText() string {
 	text += "\n💡 ✅ - опубліковано, 📝 - чернетка"
 
 	return text
+}
+
+func DeleteEventHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
+	userID := update.Message.From.ID
+	chatID := update.Message.Chat.ID
+	messageText := strings.TrimSpace(update.Message.Text)
+
+	eventID, err := strconv.Atoi(messageText)
+	if err != nil {
+		b.SendMessage(ctx, &bot.SendMessageParams{
+			ChatID: chatID,
+			Text:   "❌ Неправильний формат ID. Введіть число.",
+		})
+		return
+	}
+
+	event, err := eventRepo.GetByID(eventID)
+	if err != nil {
+		b.SendMessage(ctx, &bot.SendMessageParams{
+			ChatID: chatID,
+			Text:   "❌ Подію з таким ID не знайдено.",
+		})
+		return
+	}
+
+	conv := conversation.GetManager()
+	conv.SetState(userID, internalModels.StateAwaitingDeleteConfirm)
+
+	conv.GetConversation(userID).EventData.ID = eventID
+
+	text := fmt.Sprintf(
+		"🗑️ <b>Підтвердження видалення</b>\n\n"+
+			"Ви дійсно хочете видалити цю подію?\n\n"+
+			"<b>%s</b>\n"+
+			"📅 %s\n"+
+			"ID: %d",
+		event.Title,
+		formatEventDate(event.Date),
+		event.ID,
+	)
+
+	keyboard := keyboards.DeleteConfirmKeyboard()
+
+	b.SendMessage(ctx, &bot.SendMessageParams{
+		ChatID:      chatID,
+		Text:        text,
+		ParseMode:   models.ParseModeHTML,
+		ReplyMarkup: keyboard,
+	})
+}
+
+func handleDeleteConfirm(ctx context.Context, b *bot.Bot, callback *models.CallbackQuery) {
+	userID := callback.From.ID
+	chatID := callback.Message.Message.Chat.ID
+
+	conv := conversation.GetManager()
+	conversation := conv.GetConversation(userID)
+
+	if conversation == nil {
+		log.Printf("Error: conversation is nil for user %d", userID)
+		b.AnswerCallbackQuery(ctx, &bot.AnswerCallbackQueryParams{
+			CallbackQueryID: callback.ID,
+			Text:            "❌ Помилка: дані втрачено",
+			ShowAlert:       true,
+		})
+		return
+	}
+
+	eventID := conversation.EventData.ID
+	log.Printf("Trying to delete event ID: %d", eventID)
+
+	err := eventRepo.Delete(eventID)
+	if err != nil {
+		log.Printf("Error deleting event: %v", err)
+		b.EditMessageText(ctx, &bot.EditMessageTextParams{
+			ChatID:    chatID,
+			MessageID: callback.Message.Message.ID,
+			Text:      "❌ Помилка видалення події.",
+		})
+		conv.ClearState(userID)
+		return
+	}
+
+	log.Printf("Event %d deleted successfully", eventID)
+	conv.ClearState(userID)
+
+	text := fmt.Sprintf("✅ Подію (ID: %d) успішно видалено!", eventID)
+	keyboard := keyboards.AdminPanelKeyboard()
+
+	b.EditMessageText(ctx, &bot.EditMessageTextParams{
+		ChatID:      chatID,
+		MessageID:   callback.Message.Message.ID,
+		Text:        text,
+		ReplyMarkup: keyboard,
+	})
+
+	b.AnswerCallbackQuery(ctx, &bot.AnswerCallbackQueryParams{
+		CallbackQueryID: callback.ID,
+	})
+}
+
+func handleDeleteCancel(ctx context.Context, b *bot.Bot, callback *models.CallbackQuery) {
+	userID := callback.From.ID
+	chatID := callback.Message.Message.Chat.ID
+
+	conv := conversation.GetManager()
+	conv.ClearState(userID)
+
+	text := "❌ Видалення скасовано."
+	keyboard := keyboards.AdminPanelKeyboard()
+
+	b.EditMessageText(ctx, &bot.EditMessageTextParams{
+		ChatID:      chatID,
+		MessageID:   callback.Message.Message.ID,
+		Text:        text,
+		ReplyMarkup: keyboard,
+	})
+
+	b.AnswerCallbackQuery(ctx, &bot.AnswerCallbackQueryParams{
+		CallbackQueryID: callback.ID,
+	})
 }

@@ -11,6 +11,8 @@ import (
 	"github.com/malyyboh/slowo-wiary-warszawa-bot/internal/conversation"
 	"github.com/malyyboh/slowo-wiary-warszawa-bot/internal/keyboards"
 	"github.com/malyyboh/slowo-wiary-warszawa-bot/internal/messages"
+	"github.com/malyyboh/slowo-wiary-warszawa-bot/internal/middleware"
+	internalModels "github.com/malyyboh/slowo-wiary-warszawa-bot/internal/models"
 	"github.com/malyyboh/slowo-wiary-warszawa-bot/internal/repository"
 )
 
@@ -140,8 +142,24 @@ func DefaultHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 		conv := conversation.GetManager()
 		state := conv.GetState(userID)
 
-		if state != "" {
+		if update.Message.Text == "/cancel" && state != "" {
+			conv.ClearState(userID)
+			b.SendMessage(ctx, &bot.SendMessageParams{
+				ChatID: update.Message.Chat.ID,
+				Text:   "❌ Операцію скасовано.",
+			})
+			return
+		}
+
+		if state != "" &&
+			state != internalModels.StateAwaitingDeleteID &&
+			state != internalModels.StateAwaitingDeleteConfirm {
 			HandleEventDialogMessage(ctx, b, update)
+			return
+		}
+
+		if state == internalModels.StateAwaitingDeleteID && middleware.IsAdmin(userID) {
+			DeleteEventHandler(ctx, b, update)
 			return
 		}
 
