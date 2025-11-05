@@ -47,6 +47,20 @@ func createTables() error {
 	
 	CREATE INDEX IF NOT EXISTS idx_events_date ON events(date);
 	CREATE INDEX IF NOT EXISTS idx_events_is_published ON events(is_published);
+	
+	CREATE TABLE IF NOT EXISTS users (
+		user_id INTEGER PRIMARY KEY,
+		username TEXT,
+		first_name TEXT NOT NULL,
+		subscribed_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+		is_active BOOLEAN NOT NULL DEFAULT 1,
+		is_blocked BOOLEAN NOT NULL DEFAULT 0,
+		last_seen DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+		updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+	);
+
+	CREATE INDEX IF NOT EXISTS idx_users_is_active ON users(is_active);
+	CREATE INDEX IF NOT EXISTS idx_users_is_blocked ON users(is_blocked);
 	`
 
 	_, err := DB.Exec(schema)

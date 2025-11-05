@@ -17,8 +17,29 @@ import (
 )
 
 var eventRepo = repository.NewEventRepository()
+var userRepo = repository.NewUserRepository()
 
 func StartHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
+	userID := update.Message.From.ID
+	username := update.Message.From.Username
+	firstName := update.Message.From.FirstName
+
+	user := &internalModels.User{
+		UserID:       userID,
+		Username:     username,
+		FirstName:    firstName,
+		SubscribedAt: time.Now(),
+		IsActive:     true,
+		IsBlocked:    false,
+		LastSeen:     time.Now(),
+		UpdatedAt:    time.Now(),
+	}
+
+	err := userRepo.AddOrUpdate(user)
+	if err != nil {
+		log.Printf("Error adding/updating user: %v", err)
+	}
+
 	text := messages.GetText("/start")
 	keyboard := keyboards.MainMenuKeyboard()
 
