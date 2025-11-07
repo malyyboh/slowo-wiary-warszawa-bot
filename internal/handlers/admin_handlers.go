@@ -76,6 +76,14 @@ func AdminCallbackHandler(ctx context.Context, b *bot.Bot, update *models.Update
 		handleDeleteCancel(ctx, b, callback)
 		return
 
+	case "admin_users":
+		text = getAdminUsersStatsText()
+		keyboard = keyboards.AdminUsersKeyboard()
+
+	case "admin_list_users":
+		text = getAdminUsersListText()
+		keyboard = keyboards.AdminUsersListKeyboard()
+
 	default:
 		log.Printf("Case: default - unknown command '%s'", data)
 		text = "Невідома команда"
@@ -258,4 +266,80 @@ func handleDeleteCancel(ctx context.Context, b *bot.Bot, callback *models.Callba
 	b.AnswerCallbackQuery(ctx, &bot.AnswerCallbackQueryParams{
 		CallbackQueryID: callback.ID,
 	})
+}
+
+func getAdminUsersStatsText() string {
+	stats, err := userRepo.GetStats()
+	if err != nil {
+		log.Printf("Error getting user stats: %v", err)
+		return "❌ Помилка отримання статистики користувачів"
+	}
+
+	text := "📊 <b>Статистика користувачів</b>\n\n"
+	text += fmt.Sprintf("👥 Всього: <b>%d</b>\n", stats.Total)
+	text += fmt.Sprintf("✅ Активних: <b>%d</b>\n", stats.Active)
+	text += fmt.Sprintf("🔕 Відписалися: <b>%d</b>\n", stats.Unsubscribed)
+	text += fmt.Sprintf("❌ Заблокували: <b>%d</b>\n", stats.Blocked)
+
+	return text
+}
+
+func getAdminUsersListText() string {
+	users, err := userRepo.GetAll()
+	if err != nil {
+		log.Printf("Error getting users: %v", err)
+		return "❌ Помилка отримання списку користувачів"
+	}
+
+	if len(users) == 0 {
+		return "📋 <b>Список користувачів</b>\n\nКористувачів поки що немає."
+	}
+
+	limit := 20
+	total := len(users)
+
+	text := "📋 <b>Список користувачів</b>\n\n"
+
+	if total > limit {
+		text += fmt.Sprintf("Показано перші %d з %d користувачів\n\n", limit, total)
+	} else {
+		text += fmt.Sprintf("Всього: <b>%d</b> користувачів\n\n", total)
+	}
+
+	for i, user := range users {
+		if i >= limit {
+			break
+		}
+
+		var status string
+		if user.IsBlocked {
+			status = "❌"
+		} else if !user.IsActive {
+			status = "🔕"
+		} else {
+			status = "✅"
+		}
+
+		username := user.Username
+		if username == "" {
+			username = "немає"
+		} else {
+			username = "@" + username
+		}
+
+		text += fmt.Sprintf(
+			"%s <b>%d. %s</b> (%s)\n"+
+				"    ID: %d | %s\n\n",
+			status,
+			i+1,
+			user.FirstName,
+			username,
+			user.UserID,
+			formatEventDate(user.SubscribedAt),
+		)
+	}
+
+	text += "\n💡 ✅ - активний, 🔕 - відписався, ❌ - заблокував бота"
+
+	return text
 }

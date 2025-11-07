@@ -10,6 +10,7 @@ func AdminPanelKeyboard() *models.InlineKeyboardMarkup {
 			},
 			{
 				{Text: "📋 Список подій", CallbackData: "admin_list_events"},
+				{Text: "📊 Користувачі", CallbackData: "admin_users"},
 			},
 			{
 				{Text: "🏠 Головне меню", CallbackData: "back_to_start"},
@@ -29,6 +30,31 @@ func AdminEventsListKeyboard() *models.InlineKeyboardMarkup {
 			},
 			{
 				{Text: "◀️ Назад", CallbackData: "admin_panel"},
+				{Text: "🏠 Головне меню", CallbackData: "back_to_start"},
+			},
+		},
+	}
+}
+
+func AdminUsersKeyboard() *models.InlineKeyboardMarkup {
+	return &models.InlineKeyboardMarkup{
+		InlineKeyboard: [][]models.InlineKeyboardButton{
+			{
+				{Text: "📋 Список користувачів", CallbackData: "admin_list_users"},
+			},
+			{
+				{Text: "◀️ Назад", CallbackData: "admin_panel"},
+				{Text: "🏠 Головне меню", CallbackData: "back_to_start"},
+			},
+		},
+	}
+}
+
+func AdminUsersListKeyboard() *models.InlineKeyboardMarkup {
+	return &models.InlineKeyboardMarkup{
+		InlineKeyboard: [][]models.InlineKeyboardButton{
+			{
+				{Text: "◀️ Назад", CallbackData: "admin_users"},
 				{Text: "🏠 Головне меню", CallbackData: "back_to_start"},
 			},
 		},
