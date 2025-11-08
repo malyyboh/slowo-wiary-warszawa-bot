@@ -7,6 +7,7 @@ import (
 	"os/signal"
 
 	"github.com/go-telegram/bot"
+	"github.com/go-telegram/bot/models"
 	"github.com/joho/godotenv"
 	"github.com/malyyboh/slowo-wiary-warszawa-bot/internal/conversation"
 	"github.com/malyyboh/slowo-wiary-warszawa-bot/internal/database"
@@ -23,7 +24,6 @@ func main() {
 	defer cancel()
 
 	middleware.InitAdmins()
-
 	conversation.InitManager()
 
 	dbPath := os.Getenv("DATABASE_PATH")
@@ -50,15 +50,27 @@ func main() {
 		log.Fatal(err)
 	}
 
+	_, err = b.SetMyCommands(ctx, &bot.SetMyCommandsParams{
+		Commands: []models.BotCommand{
+			{Command: "start", Description: "Головне меню"},
+			{Command: "help", Description: "Довідка бота"},
+			{Command: "menu", Description: "Показати кнопки меню"},
+		},
+	})
+	if err != nil {
+		log.Printf("Failed to set bot commands: %v", err)
+	}
+
 	b.RegisterHandler(bot.HandlerTypeCallbackQueryData, "admin_", bot.MatchTypePrefix,
 		middleware.AdminOnly(handlers.AdminCallbackHandler))
 	b.RegisterHandler(bot.HandlerTypeCallbackQueryData, "", bot.MatchTypePrefix, handlers.CallbackHandler)
 
 	b.RegisterHandler(bot.HandlerTypeMessageText, "/start", bot.MatchTypeExact, handlers.StartHandler)
 	b.RegisterHandler(bot.HandlerTypeMessageText, "/help", bot.MatchTypeExact, handlers.HelpHandler)
-
+	b.RegisterHandler(bot.HandlerTypeMessageText, "/menu", bot.MatchTypeExact, handlers.MenuHandler)
 	b.RegisterHandler(bot.HandlerTypeMessageText, "/admin", bot.MatchTypeExact,
 		middleware.AdminOnly(handlers.AdminPanelHandler))
+
 	log.Println("Bot started...")
 	b.Start(ctx)
 }

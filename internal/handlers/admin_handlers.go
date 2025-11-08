@@ -6,6 +6,7 @@ import (
 	"log"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/go-telegram/bot"
 	"github.com/go-telegram/bot/models"
@@ -83,6 +84,27 @@ func AdminCallbackHandler(ctx context.Context, b *bot.Bot, update *models.Update
 	case "admin_list_users":
 		text = getAdminUsersListText()
 		keyboard = keyboards.AdminUsersListKeyboard()
+
+	case "admin_broadcast":
+		text = "📢 <b>Розсилка повідомлень</b>\n\n" +
+			"Оберіть тип розсилки:"
+		keyboard = keyboards.AdminBroadcastKeyboard()
+
+	case "admin_broadcast_now":
+		userID := callback.From.ID
+		chatID := callback.Message.Message.Chat.ID
+		StartBroadcastDialog(ctx, b, userID, chatID)
+
+		b.AnswerCallbackQuery(ctx, &bot.AnswerCallbackQueryParams{
+			CallbackQueryID: callback.ID,
+		})
+		return
+	case "admin_confirm_broadcast":
+		handleBroadcastConfirm(ctx, b, callback)
+		return
+
+	case "admin_cancel_broadcast":
+		handleBroadcastCancel(ctx, b, callback)
 
 	default:
 		log.Printf("Case: default - unknown command '%s'", data)
@@ -342,4 +364,180 @@ func getAdminUsersListText() string {
 	text += "\n💡 ✅ - активний, 🔕 - відписався, ❌ - заблокував бота"
 
 	return text
+}
+
+func StartBroadcastDialog(ctx context.Context, b *bot.Bot, userID int64, chatID int64) {
+	conv := conversation.GetManager()
+	conv.SetState(userID, internalModels.StateAwaitingBroadcastText)
+
+	text := "📝 <b>Створення розсилки</b>\n\n" +
+		"Введіть текст повідомлення для розсилки:\n\n" +
+		"Це повідомлення отримають всі активні підписники.\n\n" +
+		"Для скасування натисніть /cancel"
+
+	b.SendMessage(ctx, &bot.SendMessageParams{
+		ChatID:    chatID,
+		Text:      text,
+		ParseMode: models.ParseModeHTML,
+	})
+}
+
+func HandleBroadcastDialogMessage(ctx context.Context, b *bot.Bot, update *models.Update) {
+	userID := update.Message.From.ID
+	chatID := update.Message.Chat.ID
+	text := update.Message.Text
+
+	conv := conversation.GetManager()
+	state := conv.GetState(userID)
+
+	switch state {
+	case internalModels.StateAwaitingBroadcastText:
+		conversation := conv.GetConversation(userID)
+		conversation.BroadcastText = text
+
+		conv.SetState(userID, internalModels.StateAwaitingBroadcastConfirm)
+
+		stats, err := userRepo.GetStats()
+		activeCount := 0
+		if err == nil {
+			activeCount = stats.Active
+		}
+
+		previewText := fmt.Sprintf(
+			"📢 <b>Підтвердження розсилки</b>\n\n"+
+				"<b>Текст повідомлення:</b>\n%s\n\n"+
+				"<b>Отримають:</b> %d активних користувачів\n\n"+
+				"Підтвердити відправку?",
+			text,
+			activeCount,
+		)
+
+		keyboard := keyboards.BroadcastConfirmKeyboard()
+
+		b.SendMessage(ctx, &bot.SendMessageParams{
+			ChatID:      chatID,
+			Text:        previewText,
+			ParseMode:   models.ParseModeHTML,
+			ReplyMarkup: keyboard,
+		})
+	}
+}
+
+func handleBroadcastConfirm(ctx context.Context, b *bot.Bot, callback *models.CallbackQuery) {
+	userID := callback.From.ID
+	chatID := callback.Message.Message.Chat.ID
+
+	conv := conversation.GetManager()
+	conversation := conv.GetConversation(userID)
+
+	if conversation == nil || conversation.BroadcastText == "" {
+		b.AnswerCallbackQuery(ctx, &bot.AnswerCallbackQueryParams{
+			CallbackQueryID: callback.ID,
+			Text:            "❌ Помилка: текст втрачено",
+			ShowAlert:       true,
+		})
+		return
+	}
+
+	broadcastText := conversation.BroadcastText
+
+	conv.ClearState(userID)
+
+	b.EditMessageText(ctx, &bot.EditMessageTextParams{
+		ChatID:    chatID,
+		MessageID: callback.Message.Message.ID,
+		Text:      "⏳ <b>Розсилка розпочата...</b>\n\nБудь ласка, зачекайте.",
+		ParseMode: models.ParseModeHTML,
+	})
+
+	b.AnswerCallbackQuery(ctx, &bot.AnswerCallbackQueryParams{
+		CallbackQueryID: callback.ID,
+	})
+
+	go sendBroadcast(ctx, b, chatID, callback.Message.Message.ID, broadcastText)
+}
+
+func handleBroadcastCancel(ctx context.Context, b *bot.Bot, callback *models.CallbackQuery) {
+	userID := callback.From.ID
+	chatID := callback.Message.Message.Chat.ID
+
+	conv := conversation.GetManager()
+	conv.ClearState(userID)
+
+	text := "❌ Розсилку скасовано."
+	keyboard := keyboards.AdminPanelKeyboard()
+
+	b.EditMessageText(ctx, &bot.EditMessageTextParams{
+		ChatID:      chatID,
+		MessageID:   callback.Message.Message.ID,
+		Text:        text,
+		ReplyMarkup: keyboard,
+	})
+
+	b.AnswerCallbackQuery(ctx, &bot.AnswerCallbackQueryParams{
+		CallbackQueryID: callback.ID,
+	})
+}
+
+func sendBroadcast(ctx context.Context, b *bot.Bot, adminChatID int64, messageID int, text string) {
+	users, err := userRepo.GetActive()
+	if err != nil {
+		log.Printf("Error getting active users for broadcast: %v", err)
+		b.EditMessageText(ctx, &bot.EditMessageTextParams{
+			ChatID:    adminChatID,
+			MessageID: messageID,
+			Text:      "❌ Помилка отримання списку користувачів.",
+			ParseMode: models.ParseModeHTML,
+		})
+		return
+	}
+
+	successCount := 0
+	blockedCount := 0
+	errorCount := 0
+
+	for _, user := range users {
+		_, err := b.SendMessage(ctx, &bot.SendMessageParams{
+			ChatID:    user.UserID,
+			Text:      text,
+			ParseMode: models.ParseModeHTML,
+		})
+
+		if err != nil {
+			if strings.Contains(err.Error(), "bot was blocked") {
+				userRepo.SetBlocked(user.UserID, true)
+				blockedCount++
+			} else {
+				log.Printf("Error sending broadcast to user %d: %v", user.UserID, err)
+				errorCount++
+			}
+		} else {
+			successCount++
+		}
+
+		time.Sleep(50 * time.Millisecond)
+	}
+
+	resultText := fmt.Sprintf(
+		"✅ <b>Розсилка завершена!</b>\n\n"+
+			"📊 <b>Статистика:</b>\n"+
+			"✅ Надіслано: <b>%d</b>\n"+
+			"❌ Заблокували бота: <b>%d</b>\n"+
+			"⚠️ Помилки: <b>%d</b>\n"+
+			"📝 Всього: <b>%d</b>",
+		successCount,
+		blockedCount,
+		errorCount,
+		len(users),
+	)
+
+	keyboard := keyboards.AdminPanelKeyboard()
+
+	b.EditMessageText(ctx, &bot.EditMessageTextParams{
+		ChatID:      adminChatID,
+		MessageID:   messageID,
+		Text:        resultText,
+		ParseMode:   models.ParseModeHTML,
+		ReplyMarkup: keyboard,
+	})
 }

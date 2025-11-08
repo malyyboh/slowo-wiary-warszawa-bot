@@ -13,6 +13,9 @@ func AdminPanelKeyboard() *models.InlineKeyboardMarkup {
 				{Text: "📊 Користувачі", CallbackData: "admin_users"},
 			},
 			{
+				{Text: "📢 Розсилка", CallbackData: "admin_broadcast"},
+			},
+			{
 				{Text: "🏠 Головне меню", CallbackData: "back_to_start"},
 			},
 		},
@@ -56,6 +59,31 @@ func AdminUsersListKeyboard() *models.InlineKeyboardMarkup {
 			{
 				{Text: "◀️ Назад", CallbackData: "admin_users"},
 				{Text: "🏠 Головне меню", CallbackData: "back_to_start"},
+			},
+		},
+	}
+}
+
+func AdminBroadcastKeyboard() *models.InlineKeyboardMarkup {
+	return &models.InlineKeyboardMarkup{
+		InlineKeyboard: [][]models.InlineKeyboardButton{
+			{
+				{Text: "📤 Надіслати зараз", CallbackData: "admin_broadcast_now"},
+			},
+			{
+				{Text: "◀️ Назад", CallbackData: "admin_panel"},
+				{Text: "🏠 Головне меню", CallbackData: "back_to_start"},
+			},
+		},
+	}
+}
+
+func BroadcastConfirmKeyboard() *models.InlineKeyboardMarkup {
+	return &models.InlineKeyboardMarkup{
+		InlineKeyboard: [][]models.InlineKeyboardButton{
+			{
+				{Text: "✅ Так, надіслати", CallbackData: "admin_confirm_broadcast"},
+				{Text: "❌ Скасувати", CallbackData: "admin_cancel_broadcast"},
 			},
 		},
 	}

@@ -78,6 +78,26 @@ func HelpHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 	})
 }
 
+func MenuHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
+	userID := update.Message.From.ID
+
+	isActive := true
+	user, err := userRepo.GetByID(userID)
+	if err == nil && user != nil {
+		isActive = user.IsActive
+	}
+
+	text := "📱 <b>Головне меню</b>\n\nОберіть розділ з кнопок нижче:"
+	keyboard := keyboards.MainMenuReplyKeyboard(isActive)
+
+	b.SendMessage(ctx, &bot.SendMessageParams{
+		ChatID:      update.Message.Chat.ID,
+		Text:        text,
+		ParseMode:   models.ParseModeHTML,
+		ReplyMarkup: keyboard,
+	})
+}
+
 func CallbackHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 	callback := update.CallbackQuery
 	data := callback.Data
@@ -186,13 +206,22 @@ func DefaultHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 
 		if state != "" &&
 			state != internalModels.StateAwaitingDeleteID &&
-			state != internalModels.StateAwaitingDeleteConfirm {
+			state != internalModels.StateAwaitingDeleteConfirm &&
+			state != internalModels.StateAwaitingBroadcastText &&
+			state != internalModels.StateAwaitingBroadcastConfirm {
 			HandleEventDialogMessage(ctx, b, update)
 			return
 		}
 
 		if state == internalModels.StateAwaitingDeleteID && middleware.IsAdmin(userID) {
 			DeleteEventHandler(ctx, b, update)
+			return
+		}
+
+		if (state == internalModels.StateAwaitingBroadcastText ||
+			state == internalModels.StateAwaitingBroadcastConfirm) &&
+			middleware.IsAdmin(userID) {
+			HandleBroadcastDialogMessage(ctx, b, update)
 			return
 		}
 
