@@ -5,25 +5,6 @@ import (
 	"github.com/malyyboh/slowo-wiary-warszawa-bot/internal/messages"
 )
 
-func MainMenuKeyboard() *models.InlineKeyboardMarkup {
-	return &models.InlineKeyboardMarkup{
-		InlineKeyboard: [][]models.InlineKeyboardButton{
-			{
-				{Text: messages.MainMenuButtons["about_us"], CallbackData: "about_us"},
-				{Text: messages.MainMenuButtons["ministry"], CallbackData: "ministry"},
-			},
-			{
-				{Text: messages.MainMenuButtons["social_media"], CallbackData: "social_media"},
-				{Text: messages.MainMenuButtons["events"], CallbackData: "events"},
-			},
-			{
-				{Text: messages.MainMenuButtons["donation"], CallbackData: "donation"},
-				{Text: messages.MainMenuButtons["contact"], CallbackData: "contact"},
-			},
-		},
-	}
-}
-
 func AboutUsKeyboard() *models.InlineKeyboardMarkup {
 	return &models.InlineKeyboardMarkup{
 		InlineKeyboard: [][]models.InlineKeyboardButton{
@@ -94,5 +75,39 @@ func BackToMinistryKeyboard() *models.InlineKeyboardMarkup {
 				{Text: messages.NavigationButtons["back_to_start"], CallbackData: "back_to_start"},
 			},
 		},
+	}
+}
+
+func MainMenuReplyKeyboard(isActive bool) *models.ReplyKeyboardMarkup {
+	var buttons [][]models.KeyboardButton
+
+	buttons = append(buttons, []models.KeyboardButton{
+		{Text: messages.MainMenuButtons["about_us"]},
+		{Text: messages.MainMenuButtons["ministry"]},
+	})
+
+	buttons = append(buttons, []models.KeyboardButton{
+		{Text: messages.MainMenuButtons["social_media"]},
+		{Text: messages.MainMenuButtons["events"]},
+	})
+
+	buttons = append(buttons, []models.KeyboardButton{
+		{Text: messages.MainMenuButtons["donation"]},
+		{Text: messages.MainMenuButtons["contact"]},
+	})
+
+	if isActive {
+		buttons = append(buttons, []models.KeyboardButton{
+			{Text: "🔕 Відписатися від розсилки"},
+		})
+	} else {
+		buttons = append(buttons, []models.KeyboardButton{
+			{Text: "🔔 Підписатися на розсилку"},
+		})
+	}
+
+	return &models.ReplyKeyboardMarkup{
+		Keyboard:       buttons,
+		ResizeKeyboard: true,
 	}
 }

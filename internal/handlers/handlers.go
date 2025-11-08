@@ -24,15 +24,18 @@ func StartHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 	username := update.Message.From.Username
 	firstName := update.Message.From.FirstName
 
+	location, _ := time.LoadLocation("Europe/Warsaw")
+	now := time.Now().In(location)
+
 	user := &internalModels.User{
 		UserID:       userID,
 		Username:     username,
 		FirstName:    firstName,
-		SubscribedAt: time.Now(),
+		SubscribedAt: now,
 		IsActive:     true,
 		IsBlocked:    false,
-		LastSeen:     time.Now(),
-		UpdatedAt:    time.Now(),
+		LastSeen:     now,
+		UpdatedAt:    now,
 	}
 
 	err := userRepo.AddOrUpdate(user)
@@ -40,8 +43,14 @@ func StartHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 		log.Printf("Error adding/updating user: %v", err)
 	}
 
+	isActive := true
+	savedUser, err := userRepo.GetByID(userID)
+	if err == nil && savedUser != nil {
+		isActive = savedUser.IsActive
+	}
+
 	text := messages.GetText("/start")
-	keyboard := keyboards.MainMenuKeyboard()
+	keyboard := keyboards.MainMenuReplyKeyboard(isActive)
 
 	b.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID:      update.Message.Chat.ID,
@@ -56,7 +65,7 @@ func StartHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 
 func HelpHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 	text := messages.GetText("/help")
-	keyboard := keyboards.MainMenuKeyboard()
+	keyboard := keyboards.BackToMainMenuKeyboard()
 
 	b.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID:      update.Message.Chat.ID,
@@ -79,7 +88,9 @@ func CallbackHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 	switch data {
 	case "back_to_start":
 		text = messages.GetText("/start")
-		keyboard = keyboards.MainMenuKeyboard()
+		keyboard = &models.InlineKeyboardMarkup{
+			InlineKeyboard: [][]models.InlineKeyboardButton{},
+		}
 
 	case "about_us":
 		text = messages.GetText("about_menu")
@@ -159,11 +170,12 @@ func CallbackHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 func DefaultHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 	if update.Message != nil {
 		userID := update.Message.From.ID
+		messageText := update.Message.Text
 
 		conv := conversation.GetManager()
 		state := conv.GetState(userID)
 
-		if update.Message.Text == "/cancel" && state != "" {
+		if messageText == "/cancel" && state != "" {
 			conv.ClearState(userID)
 			b.SendMessage(ctx, &bot.SendMessageParams{
 				ChatID: update.Message.Chat.ID,
@@ -184,8 +196,65 @@ func DefaultHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 			return
 		}
 
-		text := messages.GetText("other_answer")
-		keyboard := keyboards.MainMenuKeyboard()
+		var text string
+		var keyboard *models.InlineKeyboardMarkup
+
+		switch messageText {
+		case "⛪ Про нас":
+			text = messages.GetText("about_menu")
+			keyboard = keyboards.AboutUsKeyboard()
+
+		case "🙏 Служіння":
+			text = messages.GetText("ministry_menu")
+			keyboard = keyboards.MinistryKeyboard()
+
+		case "📱 Соц. мережі":
+			text = messages.GetText("social_media")
+			keyboard = keyboards.BackToMainMenuKeyboard()
+
+		case "📅 Події":
+			text = getEventsListText()
+			keyboard = keyboards.BackToMainMenuKeyboard()
+
+		case "💳 Підтримати":
+			text = messages.GetText("donation")
+			keyboard = keyboards.BackToMainMenuKeyboard()
+
+		case "📍 Наша адреса":
+			text = messages.GetText("contact")
+			keyboard = keyboards.BackToMainMenuKeyboard()
+
+		case "🔕 Відписатися від розсилки":
+			handleUnsubscribe(ctx, b, update)
+			return
+
+		case "🔔 Підписатися на розсилку":
+			handleSubscribe(ctx, b, update)
+			return
+
+		default:
+			text = messages.GetText("other_answer")
+
+			isActive := true
+			user, err := userRepo.GetByID(userID)
+			if err == nil && user != nil {
+				isActive = user.IsActive
+			}
+
+			replyKeyboard := keyboards.MainMenuReplyKeyboard(isActive)
+
+			b.SendMessage(ctx, &bot.SendMessageParams{
+				ChatID:      update.Message.Chat.ID,
+				Text:        text,
+				ParseMode:   models.ParseModeHTML,
+				ReplyMarkup: replyKeyboard,
+				LinkPreviewOptions: &models.LinkPreviewOptions{
+					IsDisabled: bot.True(),
+				},
+			})
+
+			return
+		}
 
 		b.SendMessage(ctx, &bot.SendMessageParams{
 			ChatID:      update.Message.Chat.ID,
@@ -196,7 +265,9 @@ func DefaultHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 				IsDisabled: bot.True(),
 			},
 		})
+
 	}
+
 }
 
 func getEventsListText() string {
@@ -246,4 +317,62 @@ func formatEventDate(t time.Time) string {
 		return t.Format("02.01.2006")
 	}
 	return t.Format("02.01.2006 15:04")
+}
+
+func handleUnsubscribe(ctx context.Context, b *bot.Bot, update *models.Update) {
+	userID := update.Message.From.ID
+
+	err := userRepo.SetActive(userID, false)
+	if err != nil {
+		log.Printf("Error unsubscribing user: %v", err)
+		b.SendMessage(ctx, &bot.SendMessageParams{
+			ChatID: update.Message.Chat.ID,
+			Text:   "❌ Помилка відписки. Спробуйте пізніше.",
+		})
+		return
+	}
+
+	text := "🔕 <b>Ви відписалися від розсилки</b>\n\n" +
+		"Ви більше не отримуватимете автоматичні повідомлення.\n" +
+		"Але можете і далі користуватися ботом!\n\n" +
+		"Щоб знову підписатися, натисніть кнопку нижче."
+
+	keyboard := keyboards.MainMenuReplyKeyboard(false)
+
+	b.SendMessage(ctx, &bot.SendMessageParams{
+		ChatID:      update.Message.Chat.ID,
+		Text:        text,
+		ParseMode:   models.ParseModeHTML,
+		ReplyMarkup: keyboard,
+	})
+}
+
+func handleSubscribe(ctx context.Context, b *bot.Bot, update *models.Update) {
+	userID := update.Message.From.ID
+
+	err := userRepo.SetActive(userID, true)
+	if err != nil {
+		log.Printf("Error subscribing user: %v", err)
+		b.SendMessage(ctx, &bot.SendMessageParams{
+			ChatID: update.Message.Chat.ID,
+			Text:   "❌ Помилка підписки. Спробуйте пізніше.",
+		})
+		return
+	}
+
+	text := "🔔 <b>Ви підписалися на розсилку!</b>\n\n" +
+		"Тепер ви будете отримувати:\n" +
+		"• Нагадування про богослужіння\n" +
+		"• Інформацію про події\n" +
+		"• Важливі оголошення\n\n" +
+		"Ви завжди можете відписатися натиснувши кнопку нижче."
+
+	keyboard := keyboards.MainMenuReplyKeyboard(true)
+
+	b.SendMessage(ctx, &bot.SendMessageParams{
+		ChatID:      update.Message.Chat.ID,
+		Text:        text,
+		ParseMode:   models.ParseModeHTML,
+		ReplyMarkup: keyboard,
+	})
 }
