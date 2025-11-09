@@ -14,8 +14,8 @@ type User struct {
 }
 
 type UserStats struct {
-	Total        int
-	Active       int
-	Unsubscribed int
-	Blocked      int
+	Total        int `db:"total"`
+	Active       int `db:"active"`
+	Unsubscribed int `db:"unsubscribed"`
+	Blocked      int `db:"blocked"`
 }

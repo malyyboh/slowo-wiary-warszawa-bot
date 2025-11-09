@@ -38,13 +38,13 @@ func StartHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 		UpdatedAt:    now,
 	}
 
-	err := userRepo.AddOrUpdate(user)
+	err := userRepo.AddOrUpdate(ctx, user)
 	if err != nil {
 		log.Printf("Error adding/updating user: %v", err)
 	}
 
 	isActive := true
-	savedUser, err := userRepo.GetByID(userID)
+	savedUser, err := userRepo.GetByID(ctx, userID)
 	if err == nil && savedUser != nil {
 		isActive = savedUser.IsActive
 	}
@@ -82,7 +82,7 @@ func MenuHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 	userID := update.Message.From.ID
 
 	isActive := true
-	user, err := userRepo.GetByID(userID)
+	user, err := userRepo.GetByID(ctx, userID)
 	if err == nil && user != nil {
 		isActive = user.IsActive
 	}
@@ -163,7 +163,7 @@ func CallbackHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 		text = messages.GetText("contact")
 		keyboard = keyboards.BackToMainMenuKeyboard()
 	case "events":
-		text = getEventsListText()
+		text = getEventsListText(ctx)
 		keyboard = keyboards.BackToMainMenuKeyboard()
 
 	default:
@@ -242,7 +242,7 @@ func DefaultHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 			keyboard = keyboards.BackToMainMenuKeyboard()
 
 		case "📅 Події":
-			text = getEventsListText()
+			text = getEventsListText(ctx)
 			keyboard = keyboards.BackToMainMenuKeyboard()
 
 		case "💳 Підтримати":
@@ -265,7 +265,7 @@ func DefaultHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 			text = messages.GetText("other_answer")
 
 			isActive := true
-			user, err := userRepo.GetByID(userID)
+			user, err := userRepo.GetByID(ctx, userID)
 			if err == nil && user != nil {
 				isActive = user.IsActive
 			}
@@ -299,8 +299,8 @@ func DefaultHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 
 }
 
-func getEventsListText() string {
-	events, err := eventRepo.GetUpcoming()
+func getEventsListText(ctx context.Context) string {
+	events, err := eventRepo.GetUpcoming(ctx)
 	if err != nil {
 		log.Printf("Error getting upcoming events: %v", err)
 		return messages.GetText("no_events")
@@ -351,7 +351,7 @@ func formatEventDate(t time.Time) string {
 func handleUnsubscribe(ctx context.Context, b *bot.Bot, update *models.Update) {
 	userID := update.Message.From.ID
 
-	err := userRepo.SetActive(userID, false)
+	err := userRepo.SetActive(ctx, userID, false)
 	if err != nil {
 		log.Printf("Error unsubscribing user: %v", err)
 		b.SendMessage(ctx, &bot.SendMessageParams{
@@ -379,7 +379,7 @@ func handleUnsubscribe(ctx context.Context, b *bot.Bot, update *models.Update) {
 func handleSubscribe(ctx context.Context, b *bot.Bot, update *models.Update) {
 	userID := update.Message.From.ID
 
-	err := userRepo.SetActive(userID, true)
+	err := userRepo.SetActive(ctx, userID, true)
 	if err != nil {
 		log.Printf("Error subscribing user: %v", err)
 		b.SendMessage(ctx, &bot.SendMessageParams{

@@ -1,6 +1,8 @@
 package repository
 
 import (
+	"context"
+	"fmt"
 	"time"
 
 	"github.com/malyyboh/slowo-wiary-warszawa-bot/internal/database"
@@ -8,12 +10,12 @@ import (
 )
 
 type EventRepository interface {
-	Create(event *models.Event) error
-	GetByID(id int) (*models.Event, error)
-	GetAll() ([]models.Event, error)
-	GetUpcoming() ([]models.Event, error)
-	Update(event *models.Event) error
-	Delete(id int) error
+	Create(ctx context.Context, event *models.Event) error
+	GetByID(ctx context.Context, id int) (*models.Event, error)
+	GetAll(ctx context.Context) ([]models.Event, error)
+	GetUpcoming(ctx context.Context) ([]models.Event, error)
+	Update(ctx context.Context, event *models.Event) error
+	Delete(ctx context.Context, id int) error
 }
 
 type eventRepository struct{}
@@ -22,39 +24,54 @@ func NewEventRepository() EventRepository {
 	return &eventRepository{}
 }
 
-func (r *eventRepository) Create(event *models.Event) error {
+func (r *eventRepository) Create(ctx context.Context, event *models.Event) error {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
 	query := `
 		INSERT INTO events (title, description, date, location, category, registration_url, is_published, created_at, created_by)
 		VALUES (:title, :description, :date, :location, :category, :registration_url, :is_published, :created_at, :created_by)
 	`
 
-	result, err := database.DB.NamedExec(query, event)
+	result, err := database.DB.NamedExecContext(ctx, query, event)
 	if err != nil {
-		return err
+		if err == context.DeadlineExceeded {
+			return fmt.Errorf("database write timeout creating event: %w", err)
+		}
+		return fmt.Errorf("failed to create event: %w", err)
 	}
 
 	id, err := result.LastInsertId()
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to get last insert id: %w", err)
 	}
 	event.ID = int(id)
 
 	return nil
 }
 
-func (r *eventRepository) GetByID(id int) (*models.Event, error) {
+func (r *eventRepository) GetByID(ctx context.Context, id int) (*models.Event, error) {
+	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
+	defer cancel()
+
 	var event models.Event
 	query := `SELECT * FROM events WHERE id = ?`
 
-	err := database.DB.Get(&event, query, id)
+	err := database.DB.GetContext(ctx, &event, query, id)
 	if err != nil {
-		return nil, err
+		if err == context.DeadlineExceeded {
+			return nil, fmt.Errorf("database read timeout for event %d: %w", id, err)
+		}
+		return nil, fmt.Errorf("failed to get event %d: %w", id, err)
 	}
 
 	return &event, nil
 }
 
-func (r *eventRepository) GetAll() ([]models.Event, error) {
+func (r *eventRepository) GetAll(ctx context.Context) ([]models.Event, error) {
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
 	var events []models.Event
 	query := `
 		SELECT * FROM events 
@@ -63,17 +80,25 @@ func (r *eventRepository) GetAll() ([]models.Event, error) {
 			date ASC
 	`
 
-	err := database.DB.Select(&events, query)
+	err := database.DB.SelectContext(ctx, &events, query)
 	if err != nil {
-		return nil, err
+		if err == context.DeadlineExceeded {
+			return nil, fmt.Errorf("database read timeout for all events: %w", err)
+		}
+		return nil, fmt.Errorf("failed to get all events: %w", err)
 	}
 
 	return events, nil
 }
 
-func (r *eventRepository) GetUpcoming() ([]models.Event, error) {
+func (r *eventRepository) GetUpcoming(ctx context.Context) ([]models.Event, error) {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
 	var events []models.Event
-	now := time.Now().UTC()
+
+	location, _ := time.LoadLocation("Europe/Warsaw")
+	now := time.Now().In(location)
 
 	query := `
 		SELECT * FROM events
@@ -81,15 +106,21 @@ func (r *eventRepository) GetUpcoming() ([]models.Event, error) {
 		ORDER BY date ASC
 	`
 
-	err := database.DB.Select(&events, query, now)
+	err := database.DB.SelectContext(ctx, &events, query, now)
 	if err != nil {
-		return nil, err
+		if err == context.DeadlineExceeded {
+			return nil, fmt.Errorf("database read timeout for upcoming events: %w", err)
+		}
+		return nil, fmt.Errorf("failed to get upcoming events: %w", err)
 	}
 
 	return events, nil
 }
 
-func (r *eventRepository) Update(event *models.Event) error {
+func (r *eventRepository) Update(ctx context.Context, event *models.Event) error {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
 	query := `
 		UPDATE events
 		SET title = :title,
@@ -101,12 +132,28 @@ func (r *eventRepository) Update(event *models.Event) error {
 			is_published = :is_published
 		WHERE id = :id
 	`
-	_, err := database.DB.NamedExec(query, event)
-	return err
+	_, err := database.DB.NamedExecContext(ctx, query, event)
+	if err != nil {
+		if err == context.DeadlineExceeded {
+			return fmt.Errorf("database write timeout updating event %d: %w", event.ID, err)
+		}
+		return fmt.Errorf("failed to update event %d: %w", event.ID, err)
+	}
+	return nil
 }
 
-func (r *eventRepository) Delete(id int) error {
+func (r *eventRepository) Delete(ctx context.Context, id int) error {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
 	query := `DELETE FROM events WHERE id = ?`
-	_, err := database.DB.Exec(query, id)
-	return err
+
+	_, err := database.DB.ExecContext(ctx, query, id)
+	if err != nil {
+		if err == context.DeadlineExceeded {
+			return fmt.Errorf("database write timeout deleting event %d: %w", id, err)
+		}
+		return fmt.Errorf("failed to delete event %d: %w", id, err)
+	}
+	return nil
 }

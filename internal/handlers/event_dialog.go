@@ -200,7 +200,7 @@ func handleRegistrationURL(ctx context.Context, b *bot.Bot, userID int64, chatID
 	conversation.EventData.CreatedAt = time.Now()
 	conversation.EventData.CreatedBy = userID
 
-	err := eventRepo.Create(conversation.EventData)
+	err := eventRepo.Create(ctx, conversation.EventData)
 	if err != nil {
 		log.Printf("Error creating event: %v", err)
 		b.SendMessage(ctx, &bot.SendMessageParams{

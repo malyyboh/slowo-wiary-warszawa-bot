@@ -45,7 +45,7 @@ func AdminCallbackHandler(ctx context.Context, b *bot.Bot, update *models.Update
 		keyboard = keyboards.AdminPanelKeyboard()
 
 	case "admin_list_events":
-		text = getAdminEventsListText()
+		text = getAdminEventsListText(ctx)
 		keyboard = keyboards.AdminEventsListKeyboard()
 
 	case "admin_add_event":
@@ -78,11 +78,11 @@ func AdminCallbackHandler(ctx context.Context, b *bot.Bot, update *models.Update
 		return
 
 	case "admin_users":
-		text = getAdminUsersStatsText()
+		text = getAdminUsersStatsText(ctx)
 		keyboard = keyboards.AdminUsersKeyboard()
 
 	case "admin_list_users":
-		text = getAdminUsersListText()
+		text = getAdminUsersListText(ctx)
 		keyboard = keyboards.AdminUsersListKeyboard()
 
 	case "admin_broadcast":
@@ -133,8 +133,8 @@ func AdminCallbackHandler(ctx context.Context, b *bot.Bot, update *models.Update
 	})
 }
 
-func getAdminEventsListText() string {
-	events, err := eventRepo.GetAll()
+func getAdminEventsListText(ctx context.Context) string {
+	events, err := eventRepo.GetAll(ctx)
 	if err != nil {
 		log.Printf("Error getting events: %v", err)
 		return "❌ Помилка отримання подій з бази даних"
@@ -183,7 +183,7 @@ func DeleteEventHandler(ctx context.Context, b *bot.Bot, update *models.Update) 
 		return
 	}
 
-	event, err := eventRepo.GetByID(eventID)
+	event, err := eventRepo.GetByID(ctx, eventID)
 	if err != nil {
 		b.SendMessage(ctx, &bot.SendMessageParams{
 			ChatID: chatID,
@@ -238,7 +238,7 @@ func handleDeleteConfirm(ctx context.Context, b *bot.Bot, callback *models.Callb
 	eventID := conversation.EventData.ID
 	log.Printf("Trying to delete event ID: %d", eventID)
 
-	err := eventRepo.Delete(eventID)
+	err := eventRepo.Delete(ctx, eventID)
 	if err != nil {
 		log.Printf("Error deleting event: %v", err)
 		b.EditMessageText(ctx, &bot.EditMessageTextParams{
@@ -290,8 +290,8 @@ func handleDeleteCancel(ctx context.Context, b *bot.Bot, callback *models.Callba
 	})
 }
 
-func getAdminUsersStatsText() string {
-	stats, err := userRepo.GetStats()
+func getAdminUsersStatsText(ctx context.Context) string {
+	stats, err := userRepo.GetStats(ctx)
 	if err != nil {
 		log.Printf("Error getting user stats: %v", err)
 		return "❌ Помилка отримання статистики користувачів"
@@ -306,8 +306,8 @@ func getAdminUsersStatsText() string {
 	return text
 }
 
-func getAdminUsersListText() string {
-	users, err := userRepo.GetAll()
+func getAdminUsersListText(ctx context.Context) string {
+	users, err := userRepo.GetAll(ctx)
 	if err != nil {
 		log.Printf("Error getting users: %v", err)
 		return "❌ Помилка отримання списку користувачів"
@@ -397,7 +397,7 @@ func HandleBroadcastDialogMessage(ctx context.Context, b *bot.Bot, update *model
 
 		conv.SetState(userID, internalModels.StateAwaitingBroadcastConfirm)
 
-		stats, err := userRepo.GetStats()
+		stats, err := userRepo.GetStats(ctx)
 		activeCount := 0
 		if err == nil {
 			activeCount = stats.Active
@@ -480,7 +480,7 @@ func handleBroadcastCancel(ctx context.Context, b *bot.Bot, callback *models.Cal
 }
 
 func sendBroadcast(ctx context.Context, b *bot.Bot, adminChatID int64, messageID int, text string) {
-	users, err := userRepo.GetActive()
+	users, err := userRepo.GetActive(ctx)
 	if err != nil {
 		log.Printf("Error getting active users for broadcast: %v", err)
 		b.EditMessageText(ctx, &bot.EditMessageTextParams{
@@ -505,7 +505,7 @@ func sendBroadcast(ctx context.Context, b *bot.Bot, adminChatID int64, messageID
 
 		if err != nil {
 			if strings.Contains(err.Error(), "bot was blocked") {
-				userRepo.SetBlocked(user.UserID, true)
+				userRepo.SetBlocked(ctx, user.UserID, true)
 				blockedCount++
 			} else {
 				log.Printf("Error sending broadcast to user %d: %v", user.UserID, err)
