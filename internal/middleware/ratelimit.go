@@ -12,14 +12,16 @@ import (
 )
 
 type rateLimiter struct {
-	mu               sync.Mutex
-	userLastAction   map[int64]time.Time
-	userMessageCount map[int64]int
+	mu             sync.Mutex
+	userLastAction map[int64]time.Time
+	userMessages   map[int64][]time.Time
+	lastWarn       map[int64]time.Time
 }
 
 var limiter = &rateLimiter{
-	userLastAction:   make(map[int64]time.Time),
-	userMessageCount: make(map[int64]int),
+	userLastAction: make(map[int64]time.Time),
+	userMessages:   make(map[int64][]time.Time),
+	lastWarn:       make(map[int64]time.Time),
 }
 
 func getUserIdentifier(user *models.User) string {
@@ -35,13 +37,22 @@ func getUserIdentifier(user *models.User) string {
 	return fmt.Sprintf("ID:%d", user.ID)
 }
 
+func (rl *rateLimiter) shouldSendWarning(userID int64, now time.Time) bool {
+	lastWarnTime, exists := rl.lastWarn[userID]
+	if !exists || now.Sub(lastWarnTime) > 5*time.Second {
+		rl.lastWarn[userID] = now
+		return true
+	}
+	return false
+}
+
 func RateLimit(minInterval time.Duration, maxMessages int, period time.Duration) func(next bot.HandlerFunc) bot.HandlerFunc {
 	go func() {
 		ticker := time.NewTicker(10 * time.Minute)
 		defer ticker.Stop()
 
 		for range ticker.C {
-			limiter.cleanup(period)
+			limiter.cleanup()
 		}
 	}()
 
@@ -66,34 +77,68 @@ func RateLimit(minInterval time.Duration, maxMessages int, period time.Duration)
 
 			lastAction, exists := limiter.userLastAction[userID]
 			if exists && now.Sub(lastAction) < minInterval {
+				shouldWarn := limiter.shouldSendWarning(userID, now)
 				limiter.mu.Unlock()
 
-				log.Printf("⚠️ Rate limit: User %d (%s) too fast (interval: %v)",
-					userID, userIdent, now.Sub(lastAction))
+				if shouldWarn {
+					log.Printf("⚠️ Too fast: %s (%d)", userIdent, userID)
 
-				b.SendMessage(ctx, &bot.SendMessageParams{
-					ChatID: update.Message.Chat.ID,
-					Text:   "⏳ Будь ласка, зачекайте трохи перед наступним повідомленням.",
-				})
+					go func() {
+						time.Sleep(100 * time.Millisecond)
+
+						_, err := b.SendMessage(ctx, &bot.SendMessageParams{
+							ChatID: update.Message.Chat.ID,
+							Text:   "⏳ Будь ласка, зачекайте трохи перед наступним повідомленням.",
+						})
+						if err != nil {
+							log.Printf("❌ SendMessage error: %v", err)
+						}
+					}()
+				}
 				return
 			}
 
-			count := limiter.userMessageCount[userID]
-			if count >= maxMessages {
+			messages := limiter.userMessages[userID]
+			validMessages := make([]time.Time, 0, len(messages))
+
+			for _, msgTime := range messages {
+				if now.Sub(msgTime) <= period {
+					validMessages = append(validMessages, msgTime)
+				}
+			}
+
+			if len(validMessages) >= maxMessages {
+				oldestMsg := validMessages[0]
+				waitTime := period - now.Sub(oldestMsg)
+				if waitTime < 1*time.Second {
+					waitTime = 1 * time.Second
+				}
+
+				shouldWarn := limiter.shouldSendWarning(userID, now)
 				limiter.mu.Unlock()
 
-				log.Printf("⚠️ Rate limit: User %d (%s) exceeded max messages (%d/%d)",
-					userID, userIdent, count, maxMessages)
+				if shouldWarn {
+					log.Printf("⚠️ Rate limit: User %d (%s) exceeded max messages (%d/%d), wait: %v",
+						userID, userIdent, len(validMessages), maxMessages, waitTime.Round(time.Second))
 
-				b.SendMessage(ctx, &bot.SendMessageParams{
-					ChatID: update.Message.Chat.ID,
-					Text:   "⏳ Ви надіслали забагато повідомлень. Спробуйте через хвилину.",
-				})
+					go func() {
+						time.Sleep(100 * time.Millisecond)
+
+						_, err := b.SendMessage(ctx, &bot.SendMessageParams{
+							ChatID: update.Message.Chat.ID,
+							Text: fmt.Sprintf("⏳ Ви надіслали забагато повідомлень. Спробуйте через %d секунд.",
+								int(waitTime.Seconds())+1),
+						})
+						if err != nil {
+							log.Printf("❌ SendMessage error: %v", err)
+						}
+					}()
+				}
 				return
 			}
 
 			limiter.userLastAction[userID] = now
-			limiter.userMessageCount[userID] = count + 1
+			limiter.userMessages[userID] = append(validMessages, now)
 			limiter.mu.Unlock()
 
 			next(ctx, b, update)
@@ -101,16 +146,18 @@ func RateLimit(minInterval time.Duration, maxMessages int, period time.Duration)
 	}
 }
 
-func (rl *rateLimiter) cleanup(period time.Duration) {
+func (rl *rateLimiter) cleanup() {
 	rl.mu.Lock()
 	defer rl.mu.Unlock()
 
 	now := time.Now()
+	cleanupThreshold := 10 * time.Minute
 
 	for userID, lastTime := range rl.userLastAction {
-		if now.Sub(lastTime) > period {
+		if now.Sub(lastTime) > cleanupThreshold {
 			delete(rl.userLastAction, userID)
-			delete(rl.userMessageCount, userID)
+			delete(rl.userMessages, userID)
+			delete(rl.lastWarn, userID)
 		}
 	}
 
