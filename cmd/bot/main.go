@@ -50,6 +50,15 @@ func main() {
 		log.Fatal(err)
 	}
 
+	_, err = b.DeleteWebhook(ctx, &bot.DeleteWebhookParams{
+		DropPendingUpdates: true,
+	})
+	if err != nil {
+		log.Printf("Failed to delete webhook: %v", err)
+	} else {
+		log.Printf("✅ Webhook deleted, old updates dropped")
+	}
+
 	_, err = b.SetMyCommands(ctx, &bot.SetMyCommandsParams{
 		Commands: []models.BotCommand{
 			{Command: "start", Description: "Головне меню"},

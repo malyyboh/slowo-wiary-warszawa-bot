@@ -6,12 +6,24 @@
 *.dylib
 bin/
 dist/
-bot
+
+# Bot binary executable (not source code!)
+cmd/bot/bot
+cmd/bot/bot.exe
+/bot
+/bot.exe
+
+# Logs
+*.log
+logs/
 
 # Environment variables
 .env
 
 # Database
+*.db
+*.db-shm
+*.db-wal
 data/
 
 # Go
@@ -25,6 +37,15 @@ go.work
 *.swp
 *.swo
 
-# OS
+# OS specific files
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
 Thumbs.db
+
+# Temporary files
+tmp/
+temp/
