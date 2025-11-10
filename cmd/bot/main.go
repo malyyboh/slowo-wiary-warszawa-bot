@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"time"
 
 	"github.com/go-telegram/bot"
 	"github.com/go-telegram/bot/models"
@@ -43,6 +44,9 @@ func main() {
 
 	opts := []bot.Option{
 		bot.WithDefaultHandler(handlers.DefaultHandler),
+		bot.WithMiddlewares(
+			middleware.RateLimit(2*time.Second, 20, 1*time.Minute),
+		),
 	}
 
 	b, err := bot.New(token, opts...)
