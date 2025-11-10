@@ -80,9 +80,9 @@ func RateLimit(minInterval time.Duration, maxMessages int, period time.Duration)
 				shouldWarn := limiter.shouldSendWarning(userID, now)
 				limiter.mu.Unlock()
 
-				if shouldWarn {
-					log.Printf("⚠️ Too fast: %s (%d)", userIdent, userID)
+				log.Printf("⚠️ Too fast: %s (%d), interval:  %v", userIdent, userID, now.Sub(lastAction))
 
+				if shouldWarn {
 					go func() {
 						time.Sleep(100 * time.Millisecond)
 
@@ -91,7 +91,7 @@ func RateLimit(minInterval time.Duration, maxMessages int, period time.Duration)
 							Text:   "⏳ Будь ласка, зачекайте трохи перед наступним повідомленням.",
 						})
 						if err != nil {
-							log.Printf("❌ SendMessage error: %v", err)
+							log.Printf("❌ SendMessage error (interval): %v", err)
 						}
 					}()
 				}
@@ -117,17 +117,19 @@ func RateLimit(minInterval time.Duration, maxMessages int, period time.Duration)
 				shouldWarn := limiter.shouldSendWarning(userID, now)
 				limiter.mu.Unlock()
 
-				if shouldWarn {
-					log.Printf("⚠️ Rate limit: User %d (%s) exceeded max messages (%d/%d), wait: %v",
-						userID, userIdent, len(validMessages), maxMessages, waitTime.Round(time.Second))
+				log.Printf("⚠️ Rate limit: User %d (%s) exceeded max messages (%d/%d), wait: %v",
+					userID, userIdent, len(validMessages), maxMessages, waitTime.Round(time.Second))
 
+				if shouldWarn {
 					go func() {
 						time.Sleep(100 * time.Millisecond)
 
+						text := fmt.Sprintf("⏳ Ви надіслали забагато повідомлень. Спробуйте через %d секунд.",
+							int(waitTime.Seconds())+1)
+
 						_, err := b.SendMessage(ctx, &bot.SendMessageParams{
 							ChatID: update.Message.Chat.ID,
-							Text: fmt.Sprintf("⏳ Ви надіслали забагато повідомлень. Спробуйте через %d секунд.",
-								int(waitTime.Seconds())+1),
+							Text:   text,
 						})
 						if err != nil {
 							log.Printf("❌ SendMessage error: %v", err)
