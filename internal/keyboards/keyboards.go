@@ -40,6 +40,9 @@ func MinistryKeyboard() *models.InlineKeyboardMarkup {
 				{Text: messages.MinistryButtons["kindergarten_ministry"], CallbackData: "kindergarten_ministry"},
 			},
 			{
+				{Text: messages.MinistryButtons["maranatha_ministry"], CallbackData: "maranatha_ministry"},
+			},
+			{
 				{Text: messages.NavigationButtons["back_to_start"], CallbackData: "back_to_start"},
 			},
 		},

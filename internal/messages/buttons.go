@@ -19,11 +19,12 @@ var AboutUsButtons = map[string]string{
 
 var MinistryButtons = map[string]string{
 	"sunday_ministry":       "⛪ Недільне",
-	"home_ministry":         "🏠 Домашні групи",
+	"home_ministry":         "🏘️ Домашні групи",
 	"prayer_ministry":       "🙏 Молитовне",
 	"youth_ministry":        "🔥 Молодіжка",
 	"teenagers_ministry":    "⚡️ Підлітки",
 	"kindergarten_ministry": "🎨 Садочок",
+	"maranatha_ministry":    "✝️ Місія Маранафа",
 }
 
 var NavigationButtons = map[string]string{

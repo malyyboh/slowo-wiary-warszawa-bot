@@ -152,6 +152,9 @@ func CallbackHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 	case "kindergarten_ministry":
 		text = messages.GetText("kindergarten_ministry")
 		keyboard = keyboards.BackToMinistryKeyboard()
+	case "maranatha_ministry":
+		text = messages.GetText("maranatha_ministry")
+		keyboard = keyboards.BackToMinistryKeyboard()
 
 	case "social_media":
 		text = messages.GetText("social_media")

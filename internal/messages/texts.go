@@ -102,16 +102,20 @@ Hадавали консультації з перетину кордону, п�
 ▶️ <a href="https://www.youtube.com/@KoscioSLOWOWIARY/streams">YouTube Трансляція</a>`,
 
 	"home_ministry": `<b>Домашні групи</b>
-	
-Заохочуємо вас приєднатися до однієї з домашніх груп, які збираються <b>по середах</b>, що знаходиться найближче до вас.
 
-📍 Ząbki, Reymonta 29B/1
+Обери свою домашню групу, пізнавай Бога і заводь нові знайомства.
+
+
+📅 <b>Кожної середи о 🕖 19:00 </b>
+💡 <i>Натисніть на номер телефону, щоб скопіювати</i>
+
+📍 Ząbki
 Павло Ващишин <code>+48 575 249 842</code>
 
-📍 Wolomin, Adama Mickiewicza 12
+📍 Wolomin
 Богдан і Марина Андреєви <code>+48 500 158 947</code>
 
-📍 Otwock, Kraszewskiego 85C/4
+📍 Otwock
 Володимир Миндзюк <code>+48 792 020 068</code>
 
 📍 Legionowo
@@ -120,20 +124,24 @@ Hадавали консультації з перетину кордону, п�
 📍 Pruszków
 Олександр Мельник <code>+48 578 360 304</code>
 
-📍 Piaseczno, Konwalii 2A
+📍 Piaseczno
 Олег Максимець <code>+48 788 124 237</code>
 
-📍 Praga-Północ, Targowa 70/57
+📍 Praga-Północ
 Юрій Кирилов <code>+48 886 804 234</code>
 
-📍 Brwinów, Wiosenna 20
+📍 Brwinów
 Віталій Лакатош <code>+48 889 398 818</code>
 
-📍 Mokotów, Bukowińska 22/58
+📍 Mokotów
 Мирослав Кондрич <code>+48 513 554 597</code>
 
-<b>Спілкування і молитва:</b>
-📍 Ząbki, Piłsudskiego 95A`,
+📍 Mokotów
+Мирослав Кондрич <code>+48 513 554 597</code>
+
+<b>Спілкування і молитва о 🕡 18:30</b>
+📍 Ząbki, Piłsudskiego 95A
+Олександр Пержу <code>+48 730 920 086</code>`,
 
 	"prayer_ministry": `<b>Молитовне служіння</b>
 	
@@ -144,13 +152,15 @@ Hадавали консультації з перетину кордону, п�
 	
 📅 <b>Кожної суботи о 🕖 19:00</b>
 📍 Адреса: <code>Trakt Lubelski 410, Warszawa</code>
-📸 <a href="https://www.instagram.com/united.youth.warsaw">Instagram</a>`,
+
+📷 <a href="https://www.instagram.com/united.youth.warsaw">Instagram</a>`,
 
 	"teenagers_ministry": `<b>Підліткове служіння</b>
 	
 📅 <b>Кожної суботи о 🕑 14:00</b>
 📍 Адреса: <code>Trakt Lubelski 410, Warszawa</code>
-📸 <a href="https://www.instagram.com/blessed_teenagers">Instagram</a>`,
+
+📷 <a href="https://www.instagram.com/blessed_teenagers">Instagram</a>`,
 
 	"kindergarten_ministry": `<b>Дитячий садочок
 "Безпечна пристань"</b>
@@ -160,13 +170,28 @@ Hадавали консультації з перетину кордону, п�
 😊 Безпечна і приємна атмосфера
 
 📍 Адреса: <code>Kwiatowa 5B, Ząbki</code>
-📸 <a href="https://www.instagram.com/bezpieczna_przystan_w">Instagram</a>`,
+
+📷 <a href="https://www.instagram.com/bezpieczna_przystan_w">Instagram</a>`,
+
+	"maranatha_ministry": `<b>Місія "Маранафа"</b>
+
+Платформа для співпраці церков та організацій на добровільних засадах, обʼєднаних спільним баченням та цінностями.
+
+<b>Наше бачення:</b>
+Європа повернена до Христа.
+
+<b>Наша місія:</b>
+Спорядження зрілих лідерів для відкриття впливових церков та інших інституцій в стратегічних європейських містах.
+
+𝗳 <a href="https://www.facebook.com/groups/354817885891252/">Facebook</a>  📷 <a href="https://www.instagram.com/maranatha_europe/">Instagram</a> 
+
+🌐 <a href="https://www.maranathaeurope.com/">Наш сайт</a>`,
 
 	"social_media": `<b>Наші соціальні мережі</b>
 
 Щоб залишатися у центрі подій, долучайся до наших соціальних мереж:
 
-𝗳 <a href="https://www.facebook.com/groups/slowowiary">Facebook</a>  📸 <a href="https://www.instagram.com/slowo_wiary_warszawa/">Instagram</a>
+𝗳 <a href="https://www.facebook.com/groups/slowowiary">Facebook</a>  📷 <a href="https://www.instagram.com/slowo_wiary_warszawa/">Instagram</a>
 
 ▶️ <a href="https://www.youtube.com/@KoscioSLOWOWIARY">YouTube</a> 🌐 <a href="https://www.slowowiary.org">Наш сайт</a>`,
 
@@ -175,10 +200,13 @@ Hадавали консультації з перетину кордону, п�
 Якщо Ви маєте можливість та бажання, щоб Слово Боже сіялося у серця людей, можете долучитися до співпраці на ниві Божій.
 
 <b>Банківські реквізити церкви</b>
-KOŚCIÓŁ ZIELONOŚWIĄTKOWY ZBÓR SŁOWO WIARY W WARSZAWIE
+
+<b>Отримувач:</b>
+<code>KOSCIOL ZIELONOSWIATKOWY ZBOR SLOWO WIARY W WARSZAWIE</code>
+
 <b>Номер рахунку:</b>
 <code>41 1090 1753 0000 0001 4197 1368</code>
-<i>(для копіювання - клікни на номер)</i>
+💡 <i>(для копіювання - клікни на номер)</i>
 ❗ Будь ласка, вкажіть у призначенні платежу: <i>'Ofiara kościelna'</i>`,
 
 	"contact": `<b>Де ми знаходимось?</b>
