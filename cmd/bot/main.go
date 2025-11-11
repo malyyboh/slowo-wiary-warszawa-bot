@@ -68,6 +68,7 @@ func main() {
 			{Command: "start", Description: "Головне меню"},
 			{Command: "help", Description: "Довідка бота"},
 			{Command: "menu", Description: "Показати кнопки меню"},
+			{Command: "privacy", Description: "Політика конфіденційності"},
 		},
 	})
 	if err != nil {
@@ -81,6 +82,7 @@ func main() {
 	b.RegisterHandler(bot.HandlerTypeMessageText, "/start", bot.MatchTypeExact, handlers.StartHandler)
 	b.RegisterHandler(bot.HandlerTypeMessageText, "/help", bot.MatchTypeExact, handlers.HelpHandler)
 	b.RegisterHandler(bot.HandlerTypeMessageText, "/menu", bot.MatchTypeExact, handlers.MenuHandler)
+	b.RegisterHandler(bot.HandlerTypeMessageText, "/privacy", bot.MatchTypeExact, handlers.PrivacyHandler)
 	b.RegisterHandler(bot.HandlerTypeMessageText, "/admin", bot.MatchTypeExact,
 		middleware.AdminOnly(handlers.AdminPanelHandler))
 

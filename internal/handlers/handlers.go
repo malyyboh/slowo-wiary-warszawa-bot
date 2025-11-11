@@ -78,6 +78,21 @@ func HelpHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 	})
 }
 
+func PrivacyHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
+	text := messages.GetText("/privacy")
+	keyboard := keyboards.BackToMainMenuKeyboard()
+
+	b.SendMessage(ctx, &bot.SendMessageParams{
+		ChatID:      update.Message.Chat.ID,
+		Text:        text,
+		ParseMode:   models.ParseModeHTML,
+		ReplyMarkup: keyboard,
+		LinkPreviewOptions: &models.LinkPreviewOptions{
+			IsDisabled: bot.True(),
+		},
+	})
+}
+
 func MenuHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 	userID := update.Message.From.ID
 
