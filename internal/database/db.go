@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 
 	"github.com/jmoiron/sqlx"
-	_ "github.com/mattn/go-sqlite3"
+	_ "modernc.org/sqlite"
 )
 
 var DB *sqlx.DB
@@ -21,9 +21,9 @@ func InitDB(dbPath string) error {
 	}
 	var err error
 
-	dsn := dbPath + "?_busy_timeout=5000&_journal_mode=WAL&_sync=NORMAL"
+	dsn := dbPath + "?_pragma=busy_timeout(5000)&_pragma=journal_mode(WAL)&_pragma=sync(NORMAL)"
 
-	DB, err = sqlx.Connect("sqlite3", dsn)
+	DB, err = sqlx.Connect("sqlite", dsn)
 	if err != nil {
 		return fmt.Errorf("failed to connect to database: %w", err)
 	}
