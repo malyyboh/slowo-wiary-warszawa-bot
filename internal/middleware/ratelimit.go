@@ -163,5 +163,7 @@ func (rl *rateLimiter) cleanup() {
 		}
 	}
 
-	log.Printf("🧹 Rate limiter cleanup: %d users tracked", len(rl.userLastAction))
+	if len(rl.userLastAction) > 0 {
+		log.Printf("🧹 Rate limiter cleanup: %d users tracked", len(rl.userLastAction))
+	}
 }
