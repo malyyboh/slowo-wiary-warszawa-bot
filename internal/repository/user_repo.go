@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/malyyboh/slowo-wiary-warszawa-bot/internal/database"
@@ -18,6 +19,7 @@ type UserRepository interface {
 	UpdateLastSeen(ctx context.Context, userID int64) error
 	SetActive(ctx context.Context, userID int64, isActive bool) error
 	SetBlocked(ctx context.Context, userID int64, isBlocked bool) error
+	ExportDB(ctx context.Context) ([]byte, error)
 }
 
 type userRepository struct{}
@@ -184,4 +186,25 @@ func (r *userRepository) SetBlocked(ctx context.Context, userID int64, isBlocked
 		return fmt.Errorf("failed to set blocked status for user %d: %w", userID, err)
 	}
 	return nil
+}
+
+func (r *userRepository) ExportDB(ctx context.Context) ([]byte, error) {
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
+	dbPath := os.Getenv("DATABASE_PATH")
+	if dbPath == "" {
+		dbPath = "./data/bot.db"
+	}
+
+	if _, err := os.Stat(dbPath); os.IsNotExist(err) {
+		return nil, fmt.Errorf("database file not found: %s", dbPath)
+	}
+
+	data, err := os.ReadFile(dbPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read database file: %w", err)
+	}
+
+	return data, nil
 }

@@ -7,10 +7,11 @@ func AdminPanelKeyboard() *models.InlineKeyboardMarkup {
 		InlineKeyboard: [][]models.InlineKeyboardButton{
 			{
 				{Text: "➕ Додати подію", CallbackData: "admin_add_event"},
+				{Text: "📋 Список подій", CallbackData: "admin_list_events"},
 			},
 			{
-				{Text: "📋 Список подій", CallbackData: "admin_list_events"},
 				{Text: "📊 Користувачі", CallbackData: "admin_users"},
+				{Text: "💾 Експорт БД", CallbackData: "admin_export_db"},
 			},
 			{
 				{Text: "📢 Розсилка", CallbackData: "admin_broadcast"},

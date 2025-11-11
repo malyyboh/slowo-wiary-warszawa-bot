@@ -85,6 +85,20 @@ func AdminCallbackHandler(ctx context.Context, b *bot.Bot, update *models.Update
 		text = getAdminUsersListText(ctx)
 		keyboard = keyboards.AdminUsersListKeyboard()
 
+	case "admin_export_db":
+		fakeUpdate := &models.Update{
+			Message: &models.Message{
+				Chat: models.Chat{ID: callback.Message.Message.Chat.ID},
+				From: &callback.From,
+			},
+		}
+		ExportDBHandler(ctx, b, fakeUpdate)
+
+		b.AnswerCallbackQuery(ctx, &bot.AnswerCallbackQueryParams{
+			CallbackQueryID: callback.ID,
+		})
+		return
+
 	case "admin_broadcast":
 		text = "📢 <b>Розсилка повідомлень</b>\n\n" +
 			"Оберіть тип розсилки:"

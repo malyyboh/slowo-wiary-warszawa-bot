@@ -85,6 +85,7 @@ func main() {
 	b.RegisterHandler(bot.HandlerTypeMessageText, "/privacy", bot.MatchTypeExact, handlers.PrivacyHandler)
 	b.RegisterHandler(bot.HandlerTypeMessageText, "/admin", bot.MatchTypeExact,
 		middleware.AdminOnly(handlers.AdminPanelHandler))
+	b.RegisterHandler(bot.HandlerTypeMessageText, "/exportDB", bot.MatchTypeExact, middleware.AdminOnly(handlers.ExportDBHandler))
 
 	log.Println("Bot started...")
 	b.Start(ctx)
