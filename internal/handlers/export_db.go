@@ -60,9 +60,8 @@ func ExportDBHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 			Filename: "bot.db",
 			Data:     bytes.NewReader(dbData),
 		},
-		Caption:     caption,
-		ParseMode:   models.ParseModeHTML,
-		ReplyMarkup: keyboards.BackToAdminPanelKeyboard(),
+		Caption:   caption,
+		ParseMode: models.ParseModeHTML,
 	})
 
 	if err != nil {
@@ -73,6 +72,12 @@ func ExportDBHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 		})
 		return
 	}
+
+	b.SendMessage(ctx, &bot.SendMessageParams{
+		ChatID:      chatID,
+		Text:        "✅ База даних експортована!",
+		ReplyMarkup: keyboards.BackToAdminPanelKeyboard(),
+	})
 
 	log.Printf("✅ DB exported to admin %d (size: %d bytes)", update.Message.From.ID, len(dbData))
 }
