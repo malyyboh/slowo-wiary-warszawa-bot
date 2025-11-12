@@ -226,19 +226,45 @@ func (r *userRepository) ExportDB(ctx context.Context) ([]byte, error) {
 
 	log.Printf("🔍 ExportDB: Using main database file: %s", dbPath)
 
-	info, err := os.Stat(dbPath)
-	if err != nil {
-		log.Printf("❌ ExportDB: cannot stat file: %v", err)
-		return nil, fmt.Errorf("cannot stat database file: %w", err)
+	if info, err := os.Stat(dbPath); err == nil {
+		log.Printf("🔍 ExportDB: main file size: %d bytes", info.Size())
 	}
 
-	log.Printf("🔍 ExportDB: file size = %d bytes", info.Size())
+	walPath := dbPath + "-wal"
+	if info, err := os.Stat(walPath); err == nil {
+		log.Printf("🔍 ExportDB: WAL file size: %d bytes ← ДАННІ ТУТ!", info.Size())
+	} else {
+		log.Printf("🔍 ExportDB: No WAL file found")
+	}
 
-	data, err := os.ReadFile(dbPath)
+	shmPath := dbPath + "-shm"
+	if info, err := os.Stat(shmPath); err == nil {
+		log.Printf("🔍 ExportDB: SHM file size: %d bytes", info.Size())
+	}
+
+	tmpFile := "/tmp/export_bot.db"
+
+	log.Printf("🔍 ExportDB: Running VACUUM INTO to merge WAL...")
+
+	_, err = database.DB.ExecContext(ctx, fmt.Sprintf("VACUUM INTO '%s'", tmpFile))
+	if err != nil {
+		log.Printf("❌ ExportDB: VACUUM failed: %v", err)
+		return nil, fmt.Errorf("failed to vacuum database: %w", err)
+	}
+
+	info, err := os.Stat(tmpFile)
+	if err != nil {
+		return nil, fmt.Errorf("cannot stat temp file: %w", err)
+	}
+	log.Printf("🔍 ExportDB: Vacuumed file size: %d bytes (main+WAL merged)", info.Size())
+
+	data, err := os.ReadFile(tmpFile)
 	if err != nil {
 		log.Printf("❌ ExportDB: cannot read file: %v", err)
 		return nil, fmt.Errorf("failed to read database file: %w", err)
 	}
+
+	os.Remove(tmpFile)
 
 	log.Printf("🔍 ExportDB: successfully read %d bytes", len(data))
 
