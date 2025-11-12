@@ -15,6 +15,12 @@ var DB *sqlx.DB
 
 func InitDB(dbPath string) error {
 
+	// ✅ ДОДАТИ DEBUG ЛОГИ ТУТ:
+	wd, _ := os.Getwd()
+	log.Printf("🔍 Working directory: %s", wd)
+	log.Printf("🔍 DATABASE_PATH env: %s", os.Getenv("DATABASE_PATH"))
+	log.Printf("🔍 Final dbPath: %s", dbPath)
+
 	dir := filepath.Dir(dbPath)
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return fmt.Errorf("failed to create database directory: %w", err)
@@ -34,6 +40,10 @@ func InitDB(dbPath string) error {
 	if err = DB.Ping(); err != nil {
 		return fmt.Errorf("failed to ping database: %w", err)
 	}
+
+	// ✅ ДОДАТИ DEBUG ЛОГ ПІСЛЯ ПІДКЛЮЧЕННЯ:
+	absPath, _ := filepath.Abs(dbPath)
+	log.Printf("🔍 Database absolute path: %s", absPath)
 
 	log.Println("Database connected successfully")
 
