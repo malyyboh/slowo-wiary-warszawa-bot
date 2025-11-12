@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"fmt"
+	"log"
 	"os"
 	"time"
 
@@ -192,19 +193,32 @@ func (r *userRepository) ExportDB(ctx context.Context) ([]byte, error) {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
-	dbPath := os.Getenv("DATABASE_PATH")
-	if dbPath == "" {
-		dbPath = "./data/bot.db"
+	var dbPath string
+	err := database.DB.GetContext(ctx, &dbPath, "PRAGMA database_list")
+
+	if err != nil || dbPath == "" {
+		dbPath = os.Getenv("DATABASE_PATH")
+		if dbPath == "" {
+			dbPath = "./data/bot.db"
+		}
 	}
 
+	log.Printf("🔍 ExportDB: Active DB connection path = '%s'", dbPath)
+
 	if _, err := os.Stat(dbPath); os.IsNotExist(err) {
+		log.Printf("❌ ExportDB: file not found at %s", dbPath)
 		return nil, fmt.Errorf("database file not found: %s", dbPath)
 	}
+
+	info, _ := os.Stat(dbPath)
+	log.Printf("🔍 ExportDB: file size = %d bytes", info.Size())
 
 	data, err := os.ReadFile(dbPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read database file: %w", err)
 	}
+
+	log.Printf("🔍 ExportDB: successfully read %d bytes", len(data))
 
 	return data, nil
 }
