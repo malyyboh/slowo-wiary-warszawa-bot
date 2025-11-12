@@ -193,28 +193,50 @@ func (r *userRepository) ExportDB(ctx context.Context) ([]byte, error) {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
-	var dbPath string
-	err := database.DB.GetContext(ctx, &dbPath, "PRAGMA database_list")
+	type DBInfo struct {
+		Seq  int    `db:"seq"`
+		Name string `db:"name"`
+		File string `db:"file"`
+	}
 
-	if err != nil || dbPath == "" {
-		dbPath = os.Getenv("DATABASE_PATH")
-		if dbPath == "" {
-			dbPath = "./data/bot.db"
+	var dbInfo []DBInfo
+	err := database.DB.SelectContext(ctx, &dbInfo, "PRAGMA database_list")
+	if err != nil {
+		log.Printf("❌ ExportDB: cannot get database list: %v", err)
+		return nil, fmt.Errorf("cannot get database path: %w", err)
+	}
+
+	log.Printf("🔍 ExportDB: Found %d databases", len(dbInfo))
+	for _, db := range dbInfo {
+		log.Printf("🔍 ExportDB: DB %d - name='%s', file='%s'", db.Seq, db.Name, db.File)
+	}
+
+	var dbPath string
+	for _, db := range dbInfo {
+		if db.Name == "main" {
+			dbPath = db.File
+			break
 		}
 	}
 
-	log.Printf("🔍 ExportDB: Active DB connection path = '%s'", dbPath)
-
-	if _, err := os.Stat(dbPath); os.IsNotExist(err) {
-		log.Printf("❌ ExportDB: file not found at %s", dbPath)
-		return nil, fmt.Errorf("database file not found: %s", dbPath)
+	if dbPath == "" {
+		log.Printf("❌ ExportDB: main database not found in PRAGMA result")
+		return nil, fmt.Errorf("main database not found")
 	}
 
-	info, _ := os.Stat(dbPath)
+	log.Printf("🔍 ExportDB: Using main database file: %s", dbPath)
+
+	info, err := os.Stat(dbPath)
+	if err != nil {
+		log.Printf("❌ ExportDB: cannot stat file: %v", err)
+		return nil, fmt.Errorf("cannot stat database file: %w", err)
+	}
+
 	log.Printf("🔍 ExportDB: file size = %d bytes", info.Size())
 
 	data, err := os.ReadFile(dbPath)
 	if err != nil {
+		log.Printf("❌ ExportDB: cannot read file: %v", err)
 		return nil, fmt.Errorf("failed to read database file: %w", err)
 	}
 
