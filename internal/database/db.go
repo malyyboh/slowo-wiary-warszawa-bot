@@ -85,7 +85,34 @@ func createTables() error {
 
 	CREATE INDEX IF NOT EXISTS idx_users_is_active ON users(is_active);
 	CREATE INDEX IF NOT EXISTS idx_users_is_blocked ON users(is_blocked);
+
+	CREATE TABLE IF NOT EXISTS recurring_events (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		title TEXT NOT NULL,
+		description TEXT NOT NULL,
+		day_of_week INTEGER NOT NULL,
+		event_time TEXT NOT NULL,
+		reminder_day_offset INTEGER NOT NULL,
+		reminder_time TEXT NOT NULL,
+		location TEXT,
+		category TEXT,
+		registration_url TEXT,
+		is_active BOOLEAN NOT NULL DEFAULT 1,
+		created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+		created_by INTEGER NOT NULL
+	);
+
+	CREATE INDEX IF NOT EXISTS idx_recurring_events_day ON recurring_events(day_of_week);
+	CREATE INDEX IF NOT EXISTS idx_recurring_events_active ON recurring_events(is_active);
 	
+	CREATE TABLE IF NOT EXISTS reminder_log (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		reminder_key TEXT UNIQUE NOT NULL,
+		sent_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+	);
+
+	CREATE INDEX IF NOT EXISTS idx_reminder_log_key ON reminder_log(reminder_key);
+
 	CREATE TABLE IF NOT EXISTS schema_migrations (
 		version INTEGER PRIMARY KEY,
 		applied_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
